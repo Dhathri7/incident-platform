@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
-
+from fastapi import Depends, HTTPException, status                   
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
@@ -11,6 +12,8 @@ settings = get_settings()
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# JWT security scheme 
+security = HTTPBearer()
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
@@ -56,3 +59,43 @@ def decode_token(token: str) -> dict[str, Any]:
         return payload
     except JWTError:
         return {}
+
+async def get_current_user_id(                           # ← NEW FUNCTION START
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> int:
+    """
+    Extract and validate user ID from JWT token in Authorization header.
+    
+    Usage in endpoints:
+        @app.post("/protected")
+        async def protected_endpoint(user_id: int = Depends(get_current_user_id)):
+            return {"user_id": user_id}
+    
+    Args:
+        credentials: HTTP Bearer token from Authorization header
+        
+    Returns:
+        int: User ID from token payload
+        
+    Raises:
+        HTTPException: 401 if token invalid or user_id missing
+    """
+    token = credentials.credentials
+    payload = decode_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing user ID",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return int(user_id)        

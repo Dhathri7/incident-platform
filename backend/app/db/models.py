@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Enum, Boolean
 from sqlalchemy.orm import relationship
 import enum
 
@@ -51,7 +51,7 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    is_active = Column(type_=type(True), default=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
     
     # Relationships
     incidents = relationship("Incident", back_populates="created_by_user", cascade="all, delete-orphan")
